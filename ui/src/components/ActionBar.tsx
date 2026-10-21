@@ -6,6 +6,7 @@ import {
   LuHardDrive,
   LuMaximize,
   LuScanText,
+  LuSearch,
   LuSettings,
   LuSignal,
   LuTerminal,
@@ -26,6 +27,7 @@ import { cx } from "@/cva.config";
 import {
   useHidStore,
   useMountMediaStore,
+  useRTCStore,
   useSettingsStore,
   useUiStore,
   useVideoStore,
@@ -49,6 +51,7 @@ export default function Actionbar({
   const { id: deviceId } = useParams();
   const paired = useClipboardStore(state => !!deviceId && state.devices[deviceId]?.paired);
   const pasting = useClipboardStore(state => state.pasting);
+  const connected = useRTCStore(state => state.peerConnectionState === "connected");
   const [readingClipboard, setReadingClipboard] = useState(false);
   const directPaste = useRef<AbortController | null>(null);
   const { executeMacro } = useKeyboard();
@@ -78,7 +81,15 @@ export default function Actionbar({
     }
   }
 
-  const { isVirtualKeyboardEnabled, setVirtualKeyboardEnabled } = useHidStore();
+  async function openSpotlight() {
+    try {
+      await executeMacro([{ keys: ["Space"], modifiers: ["MetaLeft"], delay: 100 }]);
+    } catch (cause) {
+      notifications.error(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
+
+  const { isVirtualKeyboardEnabled, setVirtualKeyboardEnabled, isPasteInProgress } = useHidStore();
   const {
     setDisableVideoFocusTrap,
     terminalType,
@@ -165,14 +176,27 @@ export default function Actionbar({
             />
           ) : null}
           {isInCloud && paired && (
-            <Button
-              size="XS"
-              theme="primary"
-              text={m.clipboard_paste_direct()}
-              LeadingIcon={MdOutlineContentPasteGo}
-              disabled={pasting || readingClipboard}
-              onClick={() => void pasteFromDevice()}
-            />
+            <>
+              <Button
+                size="XS"
+                theme="primary"
+                text={m.clipboard_paste_direct()}
+                LeadingIcon={MdOutlineContentPasteGo}
+                disabled={pasting || readingClipboard}
+                onClick={() => void pasteFromDevice()}
+              />
+              <span title="Spotlight (⌘Space)">
+                <Button
+                  size="XS"
+                  theme="light"
+                  className="w-11 px-0 lg:w-7 [&>div]:justify-center"
+                  text={<span className="sr-only">Spotlight</span>}
+                  LeadingIcon={() => <LuSearch className="h-4 w-4" aria-hidden="true" />}
+                  disabled={!connected || pasting || readingClipboard || isPasteInProgress}
+                  onClick={() => void openSpotlight()}
+                />
+              </span>
+            </>
           )}
           <Popover>
             <SplitButtonGroup>
