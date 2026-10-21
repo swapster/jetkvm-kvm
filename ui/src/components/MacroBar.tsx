@@ -25,12 +25,12 @@ export default function MacroBar() {
   }
 
   return (
-    <Container className="border-b border-b-slate-800/20 bg-white dark:border-b-slate-300/20 dark:bg-slate-900">
+    <Container className="min-w-0 border-b border-b-slate-800/20 bg-white px-2 lg:px-8 dark:border-b-slate-300/20 dark:bg-slate-900">
       <div className="flex items-center gap-x-2 py-1.5">
-        <div className="absolute -ml-5">
+        <div className="absolute -ml-5 hidden lg:block">
           <LuCommand className="h-4 w-4 text-slate-500" />
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="mobile-touch-controls flex min-w-0 gap-2 overflow-x-auto lg:flex-wrap lg:overflow-visible [&>button]:shrink-0">
           {macros.map(macro => (
             <Button
               key={macro.id}

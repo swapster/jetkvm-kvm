@@ -20,6 +20,14 @@ JetKVM is a high-performance, open-source KVM over IP (Keyboard, Video, Mouse) s
 - **Optional Tailscale Networking** - Built-in Tailscale status and control-server configuration, including custom [Headscale](https://headscale.net/)-compatible endpoints.
 - **Open-source software** - Written in Golang on Linux. Easily customizable through SSH access to the JetKVM device.
 
+## Touch controls
+
+On a phone, swipe the toolbar horizontally to reach the keyboard and settings.
+Tap the video to click, hold for a right click, and use two fingers to scroll.
+In absolute mouse mode, drag directly on the video.
+In relative mouse mode, swipe to move the pointer; tap, then immediately touch and drag to hold the left mouse button.
+The virtual keyboard stays attached on small screens and scrolls within its panel.
+
 ## Contributing
 
 We welcome contributions from the community! Whether it's improving the firmware, adding new features, or enhancing documentation, your input is valuable. We also have some rules and taboos here, so please read this page and our [Code of Conduct](/CODE_OF_CONDUCT.md) carefully.

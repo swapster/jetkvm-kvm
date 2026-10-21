@@ -57,15 +57,15 @@ export default function DashboardNavbar({
 
   return (
     <div className="w-full border-b border-b-slate-800/20 bg-white select-none dark:border-b-slate-300/20 dark:bg-slate-900">
-      <Container>
+      <Container className="mobile-touch-controls px-2 md:px-8">
         <div className="flex h-14 items-center justify-between">
-          <div className="flex shrink-0 items-center gap-x-8">
+          <div className="flex min-w-0 items-center gap-x-2 md:shrink-0 md:gap-x-8">
             <div className="inline-block shrink-0">
-              <img src={LogoBlueIcon} alt="" className="h-6 dark:hidden" />
-              <img src={LogoWhiteIcon} alt="" className="hidden h-6 dark:block" />
+              <img src={LogoBlueIcon} alt="" className="h-4 md:h-6 dark:hidden" />
+              <img src={LogoWhiteIcon} alt="" className="hidden h-4 md:h-6 dark:block" />
             </div>
             {hostname && (
-              <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+              <span className="hidden text-sm font-medium text-slate-600 md:block dark:text-slate-300">
                 {hostname}
               </span>
             )}
@@ -85,26 +85,29 @@ export default function DashboardNavbar({
               })}
             </div>
           </div>
-          <div className="flex w-full items-center justify-end gap-x-2">
+          <div className="flex min-w-0 items-center justify-end gap-x-2">
             <div className="flex shrink-0 items-center space-x-4">
-              <div className="hidden items-stretch gap-x-2 md:flex">
+              <div className="flex items-stretch gap-x-2">
                 {showConnectionStatus && (
                   <>
-                    <div className="w-[159px]">
+                    <div className="hidden w-[159px] lg:block">
                       <PeerConnectionStatusCard state={peerConnectionState} title={kvmName} />
                     </div>
-                    <div className="hidden w-[159px] md:block">
+                    <div className="hidden w-[159px] lg:block">
                       <USBStateStatus state={usbState} peerConnectionState={peerConnectionState} />
                     </div>
                   </>
                 )}
                 {isLoggedIn ? (
                   <>
-                    <hr className="h-5 w-px self-center border-none bg-slate-800/20 dark:bg-slate-300/20" />
+                    <hr className="hidden h-5 w-px self-center border-none bg-slate-800/20 md:block dark:bg-slate-300/20" />
                     <div className="relative inline-block text-left">
                       <Menu>
                         <MenuButton as="div" className="h-full">
-                          <Button className="flex h-full items-center gap-x-3 rounded-md border border-slate-800/20 bg-white px-2 py-1.5 dark:border-slate-600 dark:bg-slate-800 dark:text-white">
+                          <Button
+                            aria-label={m.logged_in_as()}
+                            className="flex h-full items-center gap-x-3 rounded-md border border-slate-800/20 bg-white px-2 py-1.5 dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+                          >
                             {picture ? (
                               <img
                                 src={picture}
@@ -112,7 +115,7 @@ export default function DashboardNavbar({
                                 className="size-6 rounded-full border-2 border-transparent transition-colors group-hover:border-blue-700"
                               />
                             ) : userEmail ? (
-                              <span className="max-w-[200px] truncate font-display text-sm/6 font-semibold">
+                              <span className="max-w-16 truncate font-display text-sm/6 font-semibold md:max-w-[200px]">
                                 {userEmail}
                               </span>
                             ) : null}
@@ -122,7 +125,7 @@ export default function DashboardNavbar({
                         <MenuItems
                           transition
                           anchor="bottom end"
-                          className="right-0 mt-1 w-56 origin-top-right p-px focus:outline-hidden data-closed:opacity-0"
+                          className="mobile-touch-controls right-0 z-30 mt-1 w-56 origin-top-right p-px focus:outline-hidden data-closed:opacity-0"
                         >
                           <MenuItem>
                             <Card className="overflow-hidden">

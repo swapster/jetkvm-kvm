@@ -1060,7 +1060,7 @@ export default function KvmIdRoute() {
           </motion.div>
         </AnimatePresence>
       )}
-      <div className="relative h-full">
+      <div className="relative h-dvh">
         {!hideHeaderBar && (
           <FocusTrap
             paused={disableVideoFocusTrap}
@@ -1077,7 +1077,7 @@ export default function KvmIdRoute() {
         )}
 
         <div
-          className={cx("grid h-full select-none", {
+          className={cx("grid h-full min-h-0 grid-cols-1 select-none", {
             "grid-rows-(--grid-headerBody)": !hideHeaderBar,
           })}
         >
@@ -1159,7 +1159,7 @@ function SidebarContainer(props: SidebarContainerProps) {
   return (
     <div
       className={cx(
-        "flex shrink-0 border-l border-l-slate-800/20 transition-all duration-500 ease-in-out dark:border-l-slate-300/20",
+        "hidden shrink-0 border-l border-l-slate-800/20 transition-all duration-500 ease-in-out lg:flex dark:border-l-slate-300/20",
         { "border-x-transparent": !sidebarView },
       )}
       style={{ width: sidebarView ? "493px" : 0 }}

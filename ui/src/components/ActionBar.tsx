@@ -85,13 +85,13 @@ export default function Actionbar({
   );
 
   return (
-    <Container className="border-b border-b-slate-800/20 bg-white dark:border-b-slate-300/20 dark:bg-slate-900">
+    <Container className="min-w-0 border-b border-b-slate-800/20 bg-white px-2 lg:px-8 dark:border-b-slate-300/20 dark:bg-slate-900">
       <div
         onKeyUp={e => e.stopPropagation()}
         onKeyDown={e => e.stopPropagation()}
-        className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-1.5"
+        className="mobile-touch-controls flex items-center justify-between gap-x-4 gap-y-2 overflow-x-auto py-1.5 lg:flex-wrap lg:overflow-visible"
       >
-        <div className="relative flex flex-wrap items-center gap-x-2 gap-y-2">
+        <div className="relative flex shrink-0 items-center gap-x-2 gap-y-2 lg:flex-wrap">
           {developerMode && usbSerialConsoleEnabled ? (
             <SplitButtonGroup>
               <SplitButtonPrimary
@@ -151,7 +151,7 @@ export default function Actionbar({
               anchor="bottom start"
               transition
               className={cx(
-                "z-10 flex w-[420px] origin-top flex-col overflow-visible!",
+                "mobile-touch-controls z-10 flex max-h-[calc(100dvh-5rem)] w-[min(420px,calc(100vw-1rem))] origin-top flex-col overflow-y-auto overscroll-contain [--anchor-padding:8px] lg:overflow-visible!",
                 "flex origin-top flex-col transition duration-300 ease-out data-closed:translate-y-8 data-closed:opacity-0",
               )}
             >
@@ -193,7 +193,7 @@ export default function Actionbar({
                 anchor="bottom start"
                 transition
                 className={cx(
-                  "z-10 flex w-[420px] origin-top flex-col overflow-visible!",
+                  "mobile-touch-controls z-10 flex max-h-[calc(100dvh-5rem)] w-[min(420px,calc(100vw-1rem))] origin-top flex-col overflow-y-auto overscroll-contain [--anchor-padding:8px] lg:overflow-visible!",
                   "flex origin-top flex-col transition duration-300 ease-out data-closed:translate-y-8 data-closed:opacity-0",
                 )}
               >
@@ -245,7 +245,7 @@ export default function Actionbar({
                   transitionProperty: "opacity",
                 }}
                 className={cx(
-                  "z-10 flex w-[420px] origin-top flex-col overflow-visible!",
+                  "mobile-touch-controls z-10 flex max-h-[calc(100dvh-5rem)] w-[min(420px,calc(100vw-1rem))] origin-top flex-col overflow-y-auto overscroll-contain [--anchor-padding:8px] lg:overflow-visible!",
                   "flex origin-top flex-col transition duration-300 ease-out data-closed:translate-y-8 data-closed:opacity-0",
                 )}
               >
@@ -271,7 +271,7 @@ export default function Actionbar({
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+        <div className="flex shrink-0 items-center gap-x-2 gap-y-2 lg:flex-wrap">
           <Popover>
             <PopoverButton as={Fragment}>
               <Button
@@ -288,7 +288,7 @@ export default function Actionbar({
               anchor="bottom start"
               transition
               className={cx(
-                "z-10 flex w-[420px] flex-col overflow-visible!",
+                "mobile-touch-controls z-10 flex max-h-[calc(100dvh-5rem)] w-[min(420px,calc(100vw-1rem))] flex-col overflow-y-auto overscroll-contain [--anchor-padding:8px] lg:overflow-visible!",
                 "flex origin-top flex-col transition duration-300 ease-out data-closed:translate-y-8 data-closed:opacity-0",
               )}
             >
@@ -308,7 +308,7 @@ export default function Actionbar({
               onClick={() => setVirtualKeyboardEnabled(!isVirtualKeyboardEnabled)}
             />
           </div>
-          <div className="hidden md:block">
+          <div className="hidden lg:block">
             <Button
               size="XS"
               theme="light"
@@ -336,7 +336,7 @@ export default function Actionbar({
             </div>
           )}
 
-          <div className="hidden items-center gap-x-2 lg:flex">
+          <div className="flex items-center gap-x-2">
             <div className="h-4 w-px bg-slate-300 dark:bg-slate-600" />
             {isEmbedMode ? (
               <Button

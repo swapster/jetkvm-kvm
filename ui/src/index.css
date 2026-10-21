@@ -372,3 +372,30 @@ video::-webkit-media-controls {
     transparent 12px 24px
   );
 }
+
+@media (width < 1024px) {
+  .mobile-touch-controls button,
+  .mobile-touch-controls a,
+  [role="menu"] button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .mobile-touch-controls button > div {
+    min-height: 44px;
+  }
+
+  .mobile-virtual-keyboard .hg-button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .mobile-virtual-keyboard .simple-keyboard-main.simple-keyboard,
+  .mobile-virtual-keyboard .controlArrows {
+    width: 100%;
+  }
+
+  .mobile-virtual-keyboard .controlArrows {
+    flex-direction: row;
+  }
+}

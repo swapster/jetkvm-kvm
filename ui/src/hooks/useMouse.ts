@@ -49,7 +49,7 @@ export default function useMouse() {
   );
 
   const getRelMouseMoveHandler = useCallback(
-    () => (e: MouseEvent) => {
+    () => (e: Pick<MouseEvent, "movementX" | "movementY" | "buttons">) => {
       if (mouseMode !== "relative") return;
 
       // Send mouse movement
@@ -79,7 +79,7 @@ export default function useMouse() {
 
   const getAbsMouseMoveHandler = useCallback(
     ({ videoClientWidth, videoClientHeight, videoWidth, videoHeight }: AbsMouseMoveHandlerProps) =>
-      (e: MouseEvent) => {
+      (e: Pick<MouseEvent, "offsetX" | "offsetY" | "buttons">) => {
         if (!videoClientWidth || !videoClientHeight) return;
         if (mouseMode !== "absolute") return;
 

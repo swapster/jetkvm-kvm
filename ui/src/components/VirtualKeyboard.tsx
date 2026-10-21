@@ -3,6 +3,7 @@ import { ChevronDownIcon } from "@heroicons/react/16/solid";
 import { AnimatePresence, motion } from "framer-motion";
 import { KeyboardReact as Keyboard } from "react-simple-keyboard";
 import { LuKeyboard } from "react-icons/lu";
+import { useMediaQuery } from "usehooks-ts";
 
 import "react-simple-keyboard/build/css/index.css";
 import DetachIconRaw from "@/assets/detach-icon.svg";
@@ -26,6 +27,9 @@ function KeyboardWrapper() {
     useHidStore();
   const { handleKeyPress, executeMacro } = useKeyboard();
   const { selectedKeyboard } = useKeyboardLayout();
+
+  const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const keyboardAttached = !isDesktop || isAttachedVirtualKeyboardVisible;
 
   const [isDragging, setIsDragging] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -111,7 +115,7 @@ function KeyboardWrapper() {
 
   useEffect(() => {
     // Is the keyboard detached or attached?
-    if (isAttachedVirtualKeyboardVisible) return;
+    if (keyboardAttached) return;
 
     const handle = keyboardRef.current;
     if (handle) {
@@ -137,7 +141,7 @@ function KeyboardWrapper() {
       document.removeEventListener("mousemove", onDrag);
       document.removeEventListener("touchmove", onDrag);
     };
-  }, [isAttachedVirtualKeyboardVisible, endDrag, onDrag, startDrag]);
+  }, [keyboardAttached, endDrag, onDrag, startDrag]);
 
   const onKeyUp = useCallback(async (_: string, e: MouseEvent | undefined) => {
     e?.preventDefault();
@@ -197,12 +201,7 @@ function KeyboardWrapper() {
   );
 
   return (
-    <div
-      className="transition-all duration-500 ease-in-out"
-      style={{
-        marginBottom: isVirtualKeyboardEnabled ? "0px" : `-${350}px`,
-      }}
-    >
+    <div className="shrink-0">
       <AnimatePresence>
         {isVirtualKeyboardEnabled && (
           <motion.div
@@ -215,27 +214,23 @@ function KeyboardWrapper() {
             }}
           >
             <div
-              className={cx(
-                !isAttachedVirtualKeyboardVisible
-                  ? "fixed top-0 left-0 z-10 select-none"
-                  : "relative",
-              )}
+              className={cx(!keyboardAttached ? "fixed top-0 left-0 z-10 select-none" : "relative")}
               ref={keyboardRef}
               style={{
-                ...(!isAttachedVirtualKeyboardVisible
+                ...(!keyboardAttached
                   ? { transform: `translate(${newPosition.x}px, ${newPosition.y}px)` }
                   : {}),
               }}
             >
               <Card
-                className={cx("overflow-hidden", {
-                  "rounded-none": isAttachedVirtualKeyboardVisible,
-                  "keyboard-detached": !isAttachedVirtualKeyboardVisible,
+                className={cx("mobile-virtual-keyboard mobile-touch-controls overflow-hidden", {
+                  "rounded-none": keyboardAttached,
+                  "keyboard-detached": !keyboardAttached,
                 })}
               >
-                <div className="flex items-center justify-center border-b border-b-slate-800/30 bg-white px-2 py-4 dark:border-b-slate-300/20 dark:bg-slate-800">
-                  <div className="absolute left-2 flex items-center gap-x-2">
-                    {isAttachedVirtualKeyboardVisible ? (
+                <div className="relative flex min-h-12 items-center justify-start border-b border-b-slate-800/30 bg-white px-2 py-2 lg:min-h-0 lg:justify-center lg:py-4 dark:border-b-slate-300/20 dark:bg-slate-800">
+                  <div className="absolute left-2 hidden items-center gap-x-2 lg:flex">
+                    {keyboardAttached ? (
                       <Button
                         size="XS"
                         theme="light"
@@ -255,7 +250,7 @@ function KeyboardWrapper() {
                     {m.virtual_keyboard_header()}
                   </h2>
                   <div className="absolute right-2 flex items-center gap-x-2">
-                    <div className="hidden items-center gap-x-2 md:flex">
+                    <div className="hidden items-center gap-x-2 lg:flex">
                       <LinkButton
                         size="XS"
                         to="settings/keyboard"
@@ -276,8 +271,8 @@ function KeyboardWrapper() {
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex flex-col bg-blue-50/80 md:flex-row dark:bg-slate-700">
+                <div className="max-h-[min(40dvh,calc(100dvh-240px))] overflow-auto overscroll-contain lg:max-h-none lg:overflow-visible">
+                  <div className="flex min-w-[720px] flex-col bg-blue-50/80 lg:min-w-0 lg:flex-row dark:bg-slate-700">
                     <Keyboard
                       baseClass="simple-keyboard-main"
                       layoutName={mainLayoutName}

@@ -21,6 +21,7 @@ import OcrOverlay from "@components/OcrOverlay";
 import { keys } from "@/keyboardMappings";
 import notifications from "@/notifications";
 import { m } from "@localizations/messages.js";
+import { attachTouchMouse } from "@/touchMouse";
 
 const initialHdmiErrorGraceMs = 2500;
 
@@ -582,8 +583,27 @@ export default function WebRTCVideo({
       const signal = abortController.signal;
 
       videoElmRefValue.addEventListener("mousemove", mouseHandler, { signal });
-      videoElmRefValue.addEventListener("pointerdown", mouseHandler, { signal });
-      videoElmRefValue.addEventListener("pointerup", mouseHandler, { signal });
+      const pointerHandler = (event: PointerEvent) => {
+        if (event.pointerType !== "touch") mouseHandler(event);
+      };
+      videoElmRefValue.addEventListener("pointerdown", pointerHandler, { signal });
+      videoElmRefValue.addEventListener("pointerup", pointerHandler, { signal });
+      const detachTouch = attachTouchMouse(
+        videoElmRefValue,
+        (position, delta, buttons) => {
+          if (isRelativeMouseMode) {
+            relMouseMoveHandler({ movementX: delta.x, movementY: delta.y, buttons });
+          } else {
+            absMouseMoveHandler({ offsetX: position.x, offsetY: position.y, buttons });
+          }
+        },
+        delta =>
+          sendRpc("wheelReport", {
+            wheelX: ((settings.invertScroll ? -1 : 1) * delta.x) / 100,
+            wheelY: ((settings.invertScroll ? 1 : -1) * delta.y) / 100,
+          }),
+        isRelativeMouseMode,
+      );
       videoElmRefValue.addEventListener("wheel", mouseWheelHandler, {
         signal,
         passive: true,
@@ -618,6 +638,7 @@ export default function WebRTCVideo({
       videoElmRefValue.addEventListener("auxclick", preventXButtonNav, { signal });
 
       return () => {
+        detachTouch();
         abortController.abort();
       };
     },
@@ -630,6 +651,8 @@ export default function WebRTCVideo({
       mouseWheelHandler,
       resetMousePosition,
       settings.mouseMode,
+      settings.invertScroll,
+      sendRpc,
     ],
   );
 
@@ -679,7 +702,7 @@ export default function WebRTCVideo({
   }, [videoSaturation, videoBrightness, videoContrast]);
 
   return (
-    <div className="grid h-full w-full grid-rows-(--grid-layout)">
+    <div className="grid h-full min-h-0 w-full min-w-0 grid-cols-1 grid-rows-[auto_minmax(0,1fr)_auto]">
       <div className="flex min-h-[39.5px] flex-col">
         <div className="flex flex-col">
           <fieldset disabled={peerConnection?.connectionState !== "connected"} className="contents">
@@ -702,13 +725,13 @@ export default function WebRTCVideo({
           <div className="flex h-full flex-col">
             <div className="relative grow overflow-hidden">
               <div className="flex h-full flex-col">
-                <div className="grid grow grid-rows-(--grid-bodyFooter) overflow-hidden">
+                <div className="flex min-h-0 grow flex-col overflow-hidden">
                   {/* In relative mouse mode and under https, we enable the pointer lock, and to do so we need a bar to show the user to click on the video to enable mouse control */}
                   <PointerLockBar show={showPointerLockBar} />
-                  <div className="relative mx-4 my-2 flex items-center justify-center overflow-hidden">
+                  <div className="relative mx-1 my-1 flex min-h-0 flex-1 items-center justify-center overflow-hidden sm:mx-4 sm:my-2">
                     <div
                       ref={fullscreenContainerRef}
-                      className="relative flex h-full w-full items-center justify-center"
+                      className="absolute inset-0 flex items-center justify-center"
                     >
                       <video
                         ref={videoElm}
@@ -721,17 +744,20 @@ export default function WebRTCVideo({
                         disablePictureInPicture
                         controlsList="nofullscreen"
                         style={videoStyle}
-                        className={cx("h-full w-full object-contain transition-all duration-1000", {
-                          "cursor-none": settings.isCursorHidden,
-                          "pointer-events-none": isOcrMode,
-                          "opacity-0!":
-                            isVideoLoading ||
-                            hdmiError ||
-                            hasConnectionIssues ||
-                            peerConnectionState !== "connected",
-                          "opacity-60!": showPointerLockBar,
-                          "animate-slideUpFade": isPlaying,
-                        })}
+                        className={cx(
+                          "h-full w-full touch-none object-contain transition-all duration-1000",
+                          {
+                            "cursor-none": settings.isCursorHidden,
+                            "pointer-events-none": isOcrMode,
+                            "opacity-0!":
+                              isVideoLoading ||
+                              hdmiError ||
+                              hasConnectionIssues ||
+                              peerConnectionState !== "connected",
+                            "opacity-60!": showPointerLockBar,
+                            "animate-slideUpFade": isPlaying,
+                          },
+                        )}
                       />
                       {audioEnabled && <audio ref={audioElm} autoPlay playsInline hidden />}
                       <OcrOverlay />
@@ -766,7 +792,7 @@ export default function WebRTCVideo({
         </div>
       </div>
       {!hideStatusBar && (
-        <div>
+        <div className="hidden lg:block">
           <InfoBar />
         </div>
       )}
