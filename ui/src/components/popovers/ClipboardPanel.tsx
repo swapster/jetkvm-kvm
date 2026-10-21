@@ -2,7 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router";
 
 import api from "@/api";
-import { CLOUD_API } from "@/ui.config";
+import {
+  checkedClipboardResponse as checkedResponse,
+  clipboardEndpoint,
+  loadClipboardStatus,
+  maxClipboardBytes,
+  pasteTextOnMac,
+  readLocalClipboard,
+  setClipboardStatus,
+  useClipboardStore,
+} from "@/nativeClipboard";
 import { isInCloud } from "@/main";
 import { m } from "@localizations/messages.js";
 import { useHidStore, useRTCStore } from "@hooks/stores";
@@ -11,21 +20,12 @@ import { Button, LinkButton } from "@components/Button";
 import { GridCard } from "@components/Card";
 import PasteModal from "./PasteModal";
 
-const maxClipboardBytes = 64 * 1024;
-type ClipboardStatus = { paired: boolean; online: boolean };
 type PairingCode = { code: string; expiresAt: string };
 
-async function checkedResponse<T>(response: Response): Promise<T> {
-  if (!response.ok) {
-    const error = (await response.json().catch(() => null)) as { message?: string } | null;
-    throw new Error(error?.message || m.clipboard_request_failed({ status: response.status }));
-  }
-  return response.status === 204 ? (undefined as T) : (response.json() as Promise<T>);
-}
-
 function NativeClipboard({ deviceId }: { deviceId: string }) {
-  const endpoint = `${CLOUD_API}/devices/${encodeURIComponent(deviceId)}/clipboard`;
-  const [status, setStatus] = useState<ClipboardStatus | null>(null);
+  const endpoint = clipboardEndpoint(deviceId);
+  const status = useClipboardStore(state => state.devices[deviceId]);
+  const pasting = useClipboardStore(state => state.pasting);
   const [pairing, setPairing] = useState<PairingCode | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -43,19 +43,13 @@ function NativeClipboard({ deviceId }: { deviceId: string }) {
   useEffect(() => {
     const ac = new AbortController();
     controller.current = ac;
-    setStatus(null);
     setPairing(null);
     setText("");
     setError("");
     setNotice("");
     busyRef.current = true;
     setBusy(true);
-    void api
-      .GET(endpoint, { signal: ac.signal })
-      .then(checkedResponse<ClipboardStatus>)
-      .then(value => {
-        if (!ac.signal.aborted) setStatus(value);
-      })
+    void loadClipboardStatus(deviceId, ac.signal)
       .catch((cause: unknown) => {
         if (!ac.signal.aborted) setError(cause instanceof Error ? cause.message : String(cause));
       })
@@ -66,7 +60,7 @@ function NativeClipboard({ deviceId }: { deviceId: string }) {
         }
       });
     return () => ac.abort();
-  }, [endpoint]);
+  }, [endpoint, deviceId]);
 
   // Invoke the operation synchronously so Safari retains the click's clipboard permission.
   async function run(operation: (signal: AbortSignal) => Promise<void>) {
@@ -89,9 +83,8 @@ function NativeClipboard({ deviceId }: { deviceId: string }) {
   }
 
   async function refresh(signal: AbortSignal) {
-    const value = await api.GET(endpoint, { signal }).then(checkedResponse<ClipboardStatus>);
+    const value = await loadClipboardStatus(deviceId, signal);
     if (signal.aborted) return;
-    setStatus(value);
     if (value.paired) setPairing(null);
   }
 
@@ -106,34 +99,11 @@ function NativeClipboard({ deviceId }: { deviceId: string }) {
   }
 
   async function pasteOnMac(value: string, signal: AbortSignal) {
-    if (signal.aborted) return;
-    if (new TextEncoder().encode(value).byteLength > maxClipboardBytes) {
-      throw new Error(m.clipboard_too_large());
-    }
-    const result = await api
-      .POST(`${endpoint}/write`, { text: value }, { signal })
-      .then(checkedResponse<{ ok: boolean }>);
-    if (signal.aborted) return;
-    if (!result.ok) throw new Error(m.clipboard_write_failed());
-    const rtc = useRTCStore.getState();
-    const hidReady =
-      !rtc.hidRpcDisabled &&
-      rtc.rpcHidChannel?.readyState === "open" &&
-      rtc.rpcHidProtocolVersion !== null;
-    if (
-      rtc.peerConnectionState !== "connected" ||
-      (!hidReady && rtc.rpcDataChannel?.readyState !== "open")
-    ) {
-      throw new Error(m.clipboard_saved_disconnected());
-    }
-    if (useHidStore.getState().isPasteInProgress) {
-      throw new Error(m.clipboard_saved_busy());
-    }
-    await executeMacroRef.current([{ keys: ["KeyV"], modifiers: ["MetaLeft"], delay: 100 }]);
+    await pasteTextOnMac(deviceId, value, signal, steps => executeMacroRef.current(steps));
     if (!signal.aborted) setNotice(m.clipboard_paste_sent());
   }
 
-  const unavailable = busy || !status?.paired || !status.online;
+  const unavailable = busy || pasting || !status?.paired || !status.online;
   const pasteDisabled = unavailable || !connected || isPasteInProgress;
   const overLimit = new TextEncoder().encode(text).byteLength > maxClipboardBytes;
 
@@ -268,13 +238,7 @@ function NativeClipboard({ deviceId }: { deviceId: string }) {
           disabled={pasteDisabled}
           onClick={() =>
             void run(async signal => {
-              if (!navigator.clipboard?.readText) throw new Error(m.clipboard_read_unavailable());
-              let value: string;
-              try {
-                value = await navigator.clipboard.readText();
-              } catch {
-                throw new Error(m.clipboard_read_unavailable());
-              }
+              const value = await readLocalClipboard();
               if (signal.aborted) return;
               setText(value);
               await pasteOnMac(value, signal);
@@ -312,7 +276,7 @@ function NativeClipboard({ deviceId }: { deviceId: string }) {
                 .DELETE(`${endpoint}/pair`, undefined, { signal })
                 .then(checkedResponse<void>);
               if (signal.aborted) return;
-              setStatus({ paired: false, online: false });
+              setClipboardStatus(deviceId, { paired: false, online: false });
               setPairing(null);
               setText("");
             })

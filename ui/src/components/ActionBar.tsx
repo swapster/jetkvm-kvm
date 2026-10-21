@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { MdOutlineContentPasteGo } from "react-icons/md";
 import {
   LuCable,
@@ -14,6 +14,11 @@ import {
 import { FaKeyboard } from "react-icons/fa6";
 import { Popover, PopoverButton, PopoverPanel } from "@headlessui/react";
 import { CommandLineIcon } from "@heroicons/react/20/solid";
+import { useParams } from "react-router";
+import { isInCloud } from "@/main";
+import { pasteTextOnMac, readLocalClipboard, useClipboardStore } from "@/nativeClipboard";
+import useKeyboard from "@hooks/useKeyboard";
+import notifications from "@/notifications";
 
 import { SplitButtonGroup, SplitButtonPrimary, SplitButtonCaret } from "@components/SplitButton";
 
@@ -41,6 +46,38 @@ export default function Actionbar({
   requestFullscreen: () => Promise<void>;
 }) {
   const { navigateTo } = useDeviceUiNavigation();
+  const { id: deviceId } = useParams();
+  const paired = useClipboardStore(state => !!deviceId && state.devices[deviceId]?.paired);
+  const pasting = useClipboardStore(state => state.pasting);
+  const [readingClipboard, setReadingClipboard] = useState(false);
+  const directPaste = useRef<AbortController | null>(null);
+  const { executeMacro } = useKeyboard();
+  const executeMacroRef = useRef(executeMacro);
+  executeMacroRef.current = executeMacro;
+  useEffect(() => {
+    directPaste.current = null;
+    setReadingClipboard(false);
+    return () => directPaste.current?.abort();
+  }, [deviceId]);
+
+  async function pasteFromDevice() {
+    if (!deviceId || directPaste.current) return;
+    const ac = new AbortController();
+    directPaste.current = ac;
+    setReadingClipboard(true);
+    try {
+      const text = await readLocalClipboard();
+      await pasteTextOnMac(deviceId, text, ac.signal, steps => executeMacroRef.current(steps));
+      if (!ac.signal.aborted) notifications.success(m.clipboard_paste_sent());
+    } catch (cause) {
+      if (!ac.signal.aborted)
+        notifications.error(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      if (directPaste.current === ac) directPaste.current = null;
+      if (!ac.signal.aborted) setReadingClipboard(false);
+    }
+  }
+
   const { isVirtualKeyboardEnabled, setVirtualKeyboardEnabled } = useHidStore();
   const {
     setDisableVideoFocusTrap,
@@ -127,6 +164,16 @@ export default function Actionbar({
               onClick={() => setTerminalType(terminalType === "cdcacm" ? "none" : "cdcacm")}
             />
           ) : null}
+          {isInCloud && paired && (
+            <Button
+              size="XS"
+              theme="primary"
+              text={m.clipboard_paste_direct()}
+              LeadingIcon={MdOutlineContentPasteGo}
+              disabled={pasting || readingClipboard}
+              onClick={() => void pasteFromDevice()}
+            />
+          )}
           <Popover>
             <SplitButtonGroup>
               <PopoverButton

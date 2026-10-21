@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useResizeObserver } from "usehooks-ts";
+import { useParams } from "react-router";
 
 import { cx } from "@/cva.config";
 import { isWindows } from "@/utils";
@@ -22,6 +23,14 @@ import { keys } from "@/keyboardMappings";
 import notifications from "@/notifications";
 import { m } from "@localizations/messages.js";
 import { attachTouchMouse } from "@/touchMouse";
+import { isInCloud } from "@/main";
+import {
+  loadClipboardStatus,
+  pasteTextOnMac,
+  readLocalClipboard,
+  useClipboardStore,
+} from "@/nativeClipboard";
+import { attachVideoClipboardPaste } from "@/videoClipboardPaste";
 
 const initialHdmiErrorGraceMs = 2500;
 
@@ -50,7 +59,11 @@ export default function WebRTCVideo({
 
   // Store hooks
   const settings = useSettingsStore();
-  const { handleKeyPress, resetKeyboardState } = useKeyboard();
+  const { handleKeyPress, resetKeyboardState, executeMacro } = useKeyboard();
+  const { id: deviceId } = useParams();
+  const keyReleaseEpoch = useRef(0);
+  const nativeHandlers = useRef({ resetKeyboardState, executeMacro, isKeyboardLockActive });
+  nativeHandlers.current = { resetKeyboardState, executeMacro, isKeyboardLockActive };
   const {
     getRelMouseMoveHandler,
     getAbsMouseMoveHandler,
@@ -374,12 +387,14 @@ export default function WebRTCVideo({
         }
       }
 
+      const releaseEpoch = keyReleaseEpoch.current;
       // When pressing the meta key + another key, the key will never trigger a keyup
       // event, so we need to clear the keys after a short delay
       // https://bugs.chromium.org/p/chromium/issues/detail?id=28089
       // https://bugzilla.mozilla.org/show_bug.cgi?id=1299553
       if (e.metaKey && hidKey < 0xe0) {
         setTimeout(() => {
+          if (releaseEpoch !== keyReleaseEpoch.current) return;
           console.debug(`Forcing the meta key release of associated key: ${hidKey}`);
           handleKeyPress(hidKey, false);
         }, 10);
@@ -392,6 +407,7 @@ export default function WebRTCVideo({
         // we'll never see the keyup event because the browser is going to lose
         // focus so set a deferred keyup after a short delay
         setTimeout(() => {
+          if (releaseEpoch !== keyReleaseEpoch.current) return;
           console.debug(`Forcing the left meta key release`);
           handleKeyPress(hidKey, false);
         }, 100);
@@ -546,6 +562,53 @@ export default function WebRTCVideo({
     },
     [keyDownHandler, keyUpHandler, resetKeyboardState],
   );
+
+  useEffect(() => {
+    if (!isInCloud || !deviceId || peerConnectionState !== "connected") return;
+    const metadata = new AbortController();
+    const refresh = () => {
+      void loadClipboardStatus(deviceId, metadata.signal).catch(() => undefined);
+    };
+    refresh();
+    window.addEventListener("focus", refresh, { signal: metadata.signal });
+    const detach = attachVideoClipboardPaste({
+      enabled: () => useClipboardStore.getState().devices[deviceId]?.paired === true,
+      busy: () => useClipboardStore.getState().pasting,
+      locked: () => nativeHandlers.current.isKeyboardLockActive,
+      readClipboard: readLocalClipboard,
+      canCapture: () => {
+        const ui = useUiStore.getState();
+        if (ui.disableVideoFocusTrap || ui.isOcrMode) return false;
+        const active = document.activeElement;
+        return (
+          active === document.body ||
+          active?.id === "videoFocusTrap" ||
+          active === videoElm.current ||
+          !!fullscreenContainerRef.current?.contains(active)
+        );
+      },
+      resetKeyboard: () => {
+        lastKeyDownRef.current = null;
+        altGrLoopRef.current = false;
+        keyReleaseEpoch.current++;
+        void nativeHandlers.current.resetKeyboardState();
+      },
+      paste: (text, signal) =>
+        pasteTextOnMac(deviceId, text, signal, steps => nativeHandlers.current.executeMacro(steps)),
+      onError: reason =>
+        notifications.error(
+          reason instanceof Error
+            ? reason.message
+            : reason === "text"
+              ? m.clipboard_text_required()
+              : m.clipboard_busy(),
+        ),
+    });
+    return () => {
+      metadata.abort();
+      detach();
+    };
+  }, [deviceId, peerConnectionState]);
 
   // Setup Video Event Listeners
   useEffect(
