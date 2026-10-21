@@ -660,11 +660,7 @@ export default function WebRTCVideo({
             absMouseMoveHandler({ offsetX: position.x, offsetY: position.y, buttons });
           }
         },
-        delta =>
-          sendRpc("wheelReport", {
-            wheelX: ((settings.invertScroll ? -1 : 1) * delta.x) / 100,
-            wheelY: ((settings.invertScroll ? 1 : -1) * delta.y) / 100,
-          }),
+        delta => mouseWheelHandler({ deltaMode: 0, deltaX: delta.x, deltaY: delta.y }),
         isRelativeMouseMode,
       );
       videoElmRefValue.addEventListener("wheel", mouseWheelHandler, {
@@ -714,8 +710,6 @@ export default function WebRTCVideo({
       mouseWheelHandler,
       resetMousePosition,
       settings.mouseMode,
-      settings.invertScroll,
-      sendRpc,
     ],
   );
 

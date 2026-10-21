@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { useJsonRpc } from "./useJsonRpc";
 import { useHidRpc } from "./useHidRpc";
 import { useMouseStore, useSettingsStore } from "./stores";
+import { createWheelAccumulator, type WheelDelta } from "@/mouseWheel";
 
 const calcDelta = (pos: number) => (Math.abs(pos) < 10 ? pos * 2 : pos);
 
@@ -17,6 +18,7 @@ export default function useMouse() {
   // states
   const { setMousePosition, setMouseMove } = useMouseStore();
   const [blockWheelEvent, setBlockWheelEvent] = useState(false);
+  const accumulateWheel = useRef(createWheelAccumulator());
 
   const { mouseMode, scrollThrottling, invertScroll } = useSettingsStore();
 
@@ -123,22 +125,18 @@ export default function useMouse() {
   );
 
   const getMouseWheelHandler = useCallback(
-    () => (e: WheelEvent) => {
+    () => (e: WheelDelta) => {
       if (scrollThrottling && blockWheelEvent) {
         return;
       }
 
-      const clampWheel = (delta: number): number => {
-        const isAccel = Math.abs(delta) >= 100;
-        const scrollValue = isAccel ? delta / 100 : Math.sign(delta);
-        return Math.max(-127, Math.min(127, scrollValue));
-      };
+      const delta = accumulateWheel.current(e, window.innerHeight);
 
       // Negate Y: browser deltaY positive = scroll down, HID Wheel positive = scroll up
-      const wheelY = (invertScroll ? 1 : -1) * clampWheel(e.deltaY);
+      const wheelY = (invertScroll ? 1 : -1) * delta.y;
       // X conventions already match (positive = right), but macOS Natural Scrolling
       // inverts both axes at OS level, so we negate X to counteract when inverted
-      const wheelX = (invertScroll ? -1 : 1) * clampWheel(e.deltaX);
+      const wheelX = (invertScroll ? -1 : 1) * delta.x;
 
       if (wheelY === 0 && wheelX === 0) return;
 
