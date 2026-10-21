@@ -28,7 +28,7 @@ import {
 import { useDeviceUiNavigation } from "@hooks/useAppNavigation";
 import { Button } from "@components/Button";
 import Container from "@components/Container";
-import PasteModal from "@components/popovers/PasteModal";
+import ClipboardPanel from "@components/popovers/ClipboardPanel";
 import WakeOnLanModal from "@components/popovers/WakeOnLan/Index";
 import MountPopopover from "@components/popovers/MountPopover";
 import ExtensionPopover from "@components/popovers/ExtensionPopover";
@@ -132,13 +132,13 @@ export default function Actionbar({
               <PopoverButton
                 as={SplitButtonPrimary}
                 icon={MdOutlineContentPasteGo}
-                label={m.paste_text()}
+                label={m.clipboard_title()}
                 onClick={() => setDisableVideoFocusTrap(true)}
               />
               <SplitButtonCaret
                 menuItems={[
                   {
-                    label: m.action_bar_copy_text(),
+                    label: `${m.action_bar_copy_text()} (OCR)`,
                     icon: LuScanText,
                     onClick: () => setOcrMode(!isOcrMode),
                     active: isOcrMode,
@@ -151,7 +151,7 @@ export default function Actionbar({
               anchor="bottom start"
               transition
               className={cx(
-                "mobile-touch-controls z-10 flex max-h-[calc(100dvh-5rem)] w-[min(420px,calc(100vw-1rem))] origin-top flex-col overflow-y-auto overscroll-contain [--anchor-padding:8px] lg:overflow-visible!",
+                "mobile-touch-controls z-10 flex max-h-[calc(100dvh-5rem)] w-[min(420px,calc(100vw-1rem))] origin-top flex-col overflow-y-auto overscroll-contain [--anchor-padding:8px]",
                 "flex origin-top flex-col transition duration-300 ease-out data-closed:translate-y-8 data-closed:opacity-0",
               )}
             >
@@ -159,7 +159,7 @@ export default function Actionbar({
                 checkIfStateChanged(open);
                 return (
                   <div className="mx-auto w-full max-w-xl">
-                    <PasteModal />
+                    <ClipboardPanel />
                   </div>
                 );
               }}
