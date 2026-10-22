@@ -35,6 +35,7 @@ import {
 import { useDeviceUiNavigation } from "@hooks/useAppNavigation";
 import { Button } from "@components/Button";
 import Container from "@components/Container";
+import MobileKeyboard from "@components/MobileKeyboard";
 import ClipboardPanel from "@components/popovers/ClipboardPanel";
 import WakeOnLanModal from "@components/popovers/WakeOnLan/Index";
 import MountPopopover from "@components/popovers/MountPopover";
@@ -371,13 +372,7 @@ export default function Actionbar({
           </Popover>
 
           <div className="block lg:hidden">
-            <Button
-              size="XS"
-              theme="light"
-              text={m.action_bar_virtual_keyboard()}
-              LeadingIcon={FaKeyboard}
-              onClick={() => setVirtualKeyboardEnabled(!isVirtualKeyboardEnabled)}
-            />
+            <MobileKeyboard key={deviceId} />
           </div>
           <div className="hidden lg:block">
             <Button

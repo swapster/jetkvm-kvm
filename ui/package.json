@@ -25,7 +25,7 @@
     "i18n:find-unused": "python3 ./tools/find_unused_messages.py",
     "i18n:find-dupes": "python3 ./tools/find_duplicate_translations.py",
     "test:e2e": "playwright test",
-    "test:mouse": "node --experimental-strip-types --test test/mouseWheel.test.ts",
+    "test:mouse": "node --experimental-strip-types --test test/mouseWheel.test.ts test/touchMouse.test.ts",
     "prepare": "cd .. && husky ui/.husky"
   },
   "dependencies": {

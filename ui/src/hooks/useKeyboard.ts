@@ -411,6 +411,7 @@ export default function useKeyboard() {
     handleKeyPress,
     resetKeyboardState,
     executeMacro,
+    executeMacroClientSide,
     cleanup,
     cancelExecuteMacro,
     pauseKeepAlive,

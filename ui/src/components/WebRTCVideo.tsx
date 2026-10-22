@@ -802,7 +802,7 @@ export default function WebRTCVideo({
                         controlsList="nofullscreen"
                         style={videoStyle}
                         className={cx(
-                          "h-full w-full touch-none object-contain transition-all duration-1000",
+                          "h-full w-full touch-pinch-zoom object-contain transition-all duration-1000",
                           {
                             "cursor-none": settings.isCursorHidden,
                             "pointer-events-none": isOcrMode,

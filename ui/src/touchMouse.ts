@@ -12,6 +12,10 @@ export function attachTouchMouse(
   let last: Point = { x: 0, y: 0 };
   let dragging = false;
   let scrolling = false;
+  let pinching = false;
+  let initialDistance = 0;
+  const gestureStart = new Map<number, Point>();
+  const moved = new Set<number>();
   let rightClicked = false;
   let relativeDrag = false;
   let lastTapAt = -Infinity;
@@ -30,9 +34,12 @@ export function attachTouchMouse(
     clearLongPress();
     if (contacts.size || dragging) move(last, zero, 0);
     contacts.clear();
+    gestureStart.clear();
+    moved.clear();
     origin = null;
     dragging = false;
     scrolling = false;
+    pinching = false;
     rightClicked = false;
     relativeDrag = false;
     scrollDelta = { x: 0, y: 0 };
@@ -48,6 +55,9 @@ export function attachTouchMouse(
       element.setPointerCapture(event.pointerId);
       clearLongPress();
       if (contacts.size !== 1) {
+        const [a, b] = [...contacts.values()];
+        initialDistance = Math.hypot(a.x - b.x, a.y - b.y);
+        for (const [id, position] of contacts) gestureStart.set(id, position);
         scrolling = true;
         dragging = false;
         move(last, zero, 0);
@@ -80,8 +90,21 @@ export function attachTouchMouse(
       last = point;
       if (scrolling) {
         if (contacts.size >= 2) {
+          moved.add(event.pointerId);
           scrollDelta.x -= delta.x / contacts.size;
           scrollDelta.y -= delta.y / contacts.size;
+          // Pointer updates arrive one finger at a time. Compare both before
+          // distinguishing parallel scrolling from a pinch.
+          if (moved.size < contacts.size) return;
+          moved.clear();
+          const [a, b] = [...contacts.values()];
+          const [startA, startB] = [...gestureStart.values()];
+          const dot = (a.x - startA.x) * (b.x - startB.x) + (a.y - startA.y) * (b.y - startB.y);
+          if (dot <= 0 && Math.abs(Math.hypot(a.x - b.x, a.y - b.y) - initialDistance) > 12) {
+            pinching = true;
+          }
+          // Leave zoom to the browser; pointercancel releases any remote buttons.
+          if (pinching) return;
           const steps = { x: Math.trunc(scrollDelta.x / 16), y: Math.trunc(scrollDelta.y / 16) };
           if (steps.x || steps.y) {
             scroll({ x: steps.x * 100, y: steps.y * 100 });
