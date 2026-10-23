@@ -24,13 +24,7 @@ import notifications from "@/notifications";
 import { m } from "@localizations/messages.js";
 import { attachTouchMouse } from "@/touchMouse";
 import { isInCloud } from "@/main";
-import {
-  loadClipboardStatus,
-  pasteTextOnMac,
-  readLocalClipboard,
-  useClipboardStore,
-} from "@/nativeClipboard";
-import { attachVideoClipboardPaste } from "@/videoClipboardPaste";
+import { loadClipboardStatus } from "@/nativeClipboard";
 
 const initialHdmiErrorGraceMs = 2500;
 
@@ -50,7 +44,6 @@ export default function WebRTCVideo({
   const [audioAutoplayBlocked, setAudioAutoplayBlocked] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [isPointerLockActive, setIsPointerLockActive] = useState(false);
-  const [isKeyboardLockActive, setIsKeyboardLockActive] = useState(false);
 
   const { send: sendRpc } = useJsonRpc();
 
@@ -59,11 +52,9 @@ export default function WebRTCVideo({
 
   // Store hooks
   const settings = useSettingsStore();
-  const { handleKeyPress, resetKeyboardState, executeMacro } = useKeyboard();
+  const { handleKeyPress, resetKeyboardState } = useKeyboard();
   const { id: deviceId } = useParams();
-  const keyReleaseEpoch = useRef(0);
-  const nativeHandlers = useRef({ resetKeyboardState, executeMacro, isKeyboardLockActive });
-  nativeHandlers.current = { resetKeyboardState, executeMacro, isKeyboardLockActive };
+
   const {
     getRelMouseMoveHandler,
     getAbsMouseMoveHandler,
@@ -222,12 +213,11 @@ export default function WebRTCVideo({
       try {
         // @ts-expect-error - keyboard lock is not supported in all browsers
         await navigator.keyboard.lock();
-        setIsKeyboardLockActive(true);
       } catch {
         // ignore errors
       }
     }
-  }, [checkNavigatorPermissions, setIsKeyboardLockActive]);
+  }, [checkNavigatorPermissions]);
 
   const releaseKeyboardLock = useCallback(async () => {
     if (
@@ -243,9 +233,8 @@ export default function WebRTCVideo({
       } catch {
         // ignore errors
       }
-      setIsKeyboardLockActive(false);
     }
-  }, [setIsKeyboardLockActive]);
+  }, []);
 
   useEffect(() => {
     if (!isPointerLockPossible || !videoElm.current) return;
@@ -387,33 +376,20 @@ export default function WebRTCVideo({
         }
       }
 
-      const releaseEpoch = keyReleaseEpoch.current;
       // When pressing the meta key + another key, the key will never trigger a keyup
       // event, so we need to clear the keys after a short delay
       // https://bugs.chromium.org/p/chromium/issues/detail?id=28089
       // https://bugzilla.mozilla.org/show_bug.cgi?id=1299553
       if (e.metaKey && hidKey < 0xe0) {
         setTimeout(() => {
-          if (releaseEpoch !== keyReleaseEpoch.current) return;
           console.debug(`Forcing the meta key release of associated key: ${hidKey}`);
           handleKeyPress(hidKey, false);
         }, 10);
       }
       console.debug(`Key down: ${hidKey}`);
       handleKeyPress(hidKey, true);
-
-      if (!isKeyboardLockActive && hidKey === keys.MetaLeft) {
-        // If the left meta key was just pressed and we're not keyboard locked
-        // we'll never see the keyup event because the browser is going to lose
-        // focus so set a deferred keyup after a short delay
-        setTimeout(() => {
-          if (releaseEpoch !== keyReleaseEpoch.current) return;
-          console.debug(`Forcing the left meta key release`);
-          handleKeyPress(hidKey, false);
-        }, 100);
-      }
     },
-    [handleKeyPress, isKeyboardLockActive, isOcrMode, isWindowsClient],
+    [handleKeyPress, isOcrMode, isWindowsClient],
   );
 
   const keyUpHandler = useCallback(
@@ -571,43 +547,7 @@ export default function WebRTCVideo({
     };
     refresh();
     window.addEventListener("focus", refresh, { signal: metadata.signal });
-    const detach = attachVideoClipboardPaste({
-      enabled: () => useClipboardStore.getState().devices[deviceId]?.paired === true,
-      busy: () => useClipboardStore.getState().pasting,
-      locked: () => nativeHandlers.current.isKeyboardLockActive,
-      readClipboard: readLocalClipboard,
-      canCapture: () => {
-        const ui = useUiStore.getState();
-        if (ui.disableVideoFocusTrap || ui.isOcrMode) return false;
-        const active = document.activeElement;
-        return (
-          active === document.body ||
-          active?.id === "videoFocusTrap" ||
-          active === videoElm.current ||
-          !!fullscreenContainerRef.current?.contains(active)
-        );
-      },
-      resetKeyboard: () => {
-        lastKeyDownRef.current = null;
-        altGrLoopRef.current = false;
-        keyReleaseEpoch.current++;
-        void nativeHandlers.current.resetKeyboardState();
-      },
-      paste: (text, signal) =>
-        pasteTextOnMac(deviceId, text, signal, steps => nativeHandlers.current.executeMacro(steps)),
-      onError: reason =>
-        notifications.error(
-          reason instanceof Error
-            ? reason.message
-            : reason === "text"
-              ? m.clipboard_text_required()
-              : m.clipboard_busy(),
-        ),
-    });
-    return () => {
-      metadata.abort();
-      detach();
-    };
+    return () => metadata.abort();
   }, [deviceId, peerConnectionState]);
 
   // Setup Video Event Listeners
